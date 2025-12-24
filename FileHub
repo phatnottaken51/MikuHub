@@ -1297,25 +1297,22 @@ function CheckBossDimension()
 		end
 	end
 end;
--- [[ BẮT ĐẦU DUMMY UI (ĐỂ GIỮ LOGIC KHÔNG BỊ LỖI) ]] --
-local L_33_ = {}
-function L_33_:Window(...) 
-    return {
-        Tab = function(...) 
-            return {
-                Label = function(...) end,
-                Dropdown = function(...) end,
-                Toggle = function(...) end,
-                Button = function(...) end,
-                Section = function(...) end,
-                TextBox = function(...) end,
-                Keybind = function(...) end,
-                Slider = function(...) end
-            }
-        end
-    }
+-- [[ BẮT ĐẦU ĐOẠN CODE SỬA LỖI UI CŨ ]] --
+-- Tạo một bảng rỗng "nuốt" mọi lệnh để không bị lỗi
+local function MagicDummy()
+    local t = {}
+    setmetatable(t, {
+        __index = function(_, k)
+            return function(...) return MagicDummy() end -- Gọi hàm nào cũng trả về chính nó
+        end,
+        __newindex = function(_, k, v) end -- Gán cái gì cũng kệ
+    })
+    return t
 end
--- [[ KẾT THÚC DUMMY UI ]] --
+
+-- L_33_ giả mạo để lừa script
+local L_33_ = MagicDummy()
+-- [[ KẾT THÚC ĐOẠN SỬA LỖI ]] --
 local L_34_ = L_33_:Window("Cokka Hub 25ms was here", Enum.KeyCode.LeftControl)
 print("|COKKA DEBUG| Anti AFK")
 game:GetService("Players").LocalPlayer.Idled:connect(function()
@@ -5219,12 +5216,22 @@ end)
 print("|COKKA DEBUG| Done loaded Cokka in: " .. os.clock() - L_1_)
 Notify("<Color=White>We are still updating more features...<Color=/>", 10)
 Notify("<Color=Blue>Hope you Enjoy it!<Color=/>", 8)
--- [[ GIAO DIỆN FLUENT UI MỚI (DÁN VÀO CUỐI CÙNG SCRIPT) ]] --
+-- [[ PHẦN GIAO DIỆN FLUENT UI MỚI (DÁN VÀO CUỐI SCRIPT) ]] --
 
--- Khởi tạo biến shared nếu chưa có
+print("--> BAT DAU TAI UI FLUENT...") -- Kiểm tra console xem thấy dòng này không
+
 if not getgenv()._25msShared then getgenv()._25msShared = {} end
 
-local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
+-- Thử tải thư viện (Bọc trong pcall để không crash nếu mạng lỗi)
+local success, Fluent = pcall(function()
+    return loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
+end)
+
+if not success or not Fluent then
+    warn("Lỗi: Không tải được Fluent UI! Kiểm tra mạng hoặc VPN.")
+    return
+end
+
 local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
 local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/InterfaceManager.lua"))()
 
@@ -5233,15 +5240,14 @@ local Window = Fluent:CreateWindow({
     SubTitle = "by 25ms & Gemini",
     TabWidth = 160,
     Size = UDim2.fromOffset(580, 460),
-    Acrylic = true, 
+    Acrylic = false, -- Tắt blur trên điện thoại cho đỡ lag/lỗi
     Theme = "Dark",
     MinimizeKey = Enum.KeyCode.LeftControl
 })
 
 local Tabs = {
     Main = Window:AddTab({ Title = "Main Farm", Icon = "home" }),
-    Stats = Window:AddTab({ Title = "Stats & Race", Icon = "bar-chart-2" }),
-    Combat = Window:AddTab({ Title = "PVP", Icon = "swords" }),
+    Stats = Window:AddTab({ Title = "Stats", Icon = "bar-chart-2" }),
     Teleport = Window:AddTab({ Title = "Teleport", Icon = "map" }),
     Raid = Window:AddTab({ Title = "Raid", Icon = "skull" }),
     Misc = Window:AddTab({ Title = "Misc", Icon = "settings" }),
@@ -5250,153 +5256,78 @@ local Tabs = {
 
 local Options = Fluent.Options
 
--- [[ 1. TAB MAIN ]] --
-do
-    Tabs.Main:AddSection("Chọn Vũ Khí")
-    
-    -- Dropdown này sẽ cập nhật biến _25msShared.SelectWeapon
-    Tabs.Main:AddDropdown("SelectWeapon", {
-        Title = "Select Weapon",
-        Values = {"Melee", "Sword", "Gun", "Fruit"},
-        Multi = false,
-        Default = "Melee",
-        Callback = function(Value)
-            _25msShared.SelectWeapon = Value
-        end
-    })
+-- [[ TAB MAIN FARM ]] --
+Tabs.Main:AddSection("Auto Farm")
 
-    Tabs.Main:AddSection("Auto Farm")
+Tabs.Main:AddDropdown("SelectWeapon", {
+    Title = "Chọn Vũ Khí",
+    Values = {"Melee", "Sword", "Gun", "Fruit"},
+    Default = "Melee",
+    Callback = function(Value) _25msShared.SelectWeapon = Value end
+})
 
-    -- Toggle này cập nhật _25msShared.AutoFarmLevel
-    -- Logic cũ (vòng lặp spawn) sẽ tự động thấy biến này = true và bắt đầu farm
-    local ToggleLevel = Tabs.Main:AddToggle("AutoFarmLevel", {Title = "Auto Farm Level", Default = false })
-    ToggleLevel:OnChanged(function()
-        _25msShared.AutoFarmLevel = Options.AutoFarmLevel.Value
-        if not _25msShared.AutoFarmLevel then 
-            game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("AbandonQuest")
-            if StopTween then StopTween(_25msShared.AutoFarmLevel) end
-        end
-    end)
+local ToggleLevel = Tabs.Main:AddToggle("AutoFarmLevel", {Title = "Auto Farm Level", Default = false })
+ToggleLevel:OnChanged(function()
+    _25msShared.AutoFarmLevel = Options.AutoFarmLevel.Value
+    if not _25msShared.AutoFarmLevel then 
+        game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("AbandonQuest")
+        if StopTween then StopTween(_25msShared.AutoFarmLevel) end
+    end
+end)
 
-    local ToggleNear = Tabs.Main:AddToggle("NeareastFarm", {Title = "Farm Nearest Mob", Default = false })
-    ToggleNear:OnChanged(function()
-        _25msShared.NeareastFarm = Options.NeareastFarm.Value
-        if not _25msShared.NeareastFarm and StopTween then StopTween(_25msShared.NeareastFarm) end
-    end)
+local ToggleNear = Tabs.Main:AddToggle("NeareastFarm", {Title = "Farm Nearest Mob", Default = false })
+ToggleNear:OnChanged(function()
+    _25msShared.NeareastFarm = Options.NeareastFarm.Value
+    if not _25msShared.NeareastFarm and StopTween then StopTween(_25msShared.NeareastFarm) end
+end)
 
-    Tabs.Main:AddSection("Bosses & Item")
-    
-    local ToggleKata = Tabs.Main:AddToggle("AutoDoughBoss", {Title = "Auto Katakuri (Dough Boss)", Default = false })
-    ToggleKata:OnChanged(function()
-        _25msShared.AutoDoughBoss = Options.AutoDoughBoss.Value
-        if not _25msShared.AutoDoughBoss and StopTween then StopTween(_25msShared.AutoDoughBoss) end
-    end)
+Tabs.Main:AddSection("Bosses")
+Tabs.Main:AddToggle("AutoDoughBoss", {Title = "Auto Katakuri", Default = false, Callback = function(v)
+    _25msShared.AutoDoughBoss = v
+    if not v and StopTween then StopTween(v) end
+end})
 
-    local ToggleBone = Tabs.Main:AddToggle("AutoFarmBone", {Title = "Auto Farm Bone", Default = false })
-    ToggleBone:OnChanged(function()
-        _25msShared.AutoFarmBone = Options.AutoFarmBone.Value
-        if not _25msShared.AutoFarmBone and StopTween then StopTween(_25msShared.AutoFarmBone) end
-    end)
-    
-    local ToggleTradeBone = Tabs.Main:AddToggle("TradeBone", {Title = "Auto Trade Bone (Random)", Default = false })
-    ToggleTradeBone:OnChanged(function()
-        _25msShared.RandomBone = Options.TradeBone.Value
-    end)
-end
+Tabs.Main:AddToggle("AutoFarmBone", {Title = "Auto Farm Bone", Default = false, Callback = function(v)
+    _25msShared.AutoFarmBone = v
+    if not v and StopTween then StopTween(v) end
+end})
 
--- [[ 2. TAB STATS & RACE ]] --
-do
-    Tabs.Stats:AddSection("Race V4")
-    
-    Tabs.Stats:AddToggle("AutoTrainV4", {Title = "Auto Train V4", Default = false, Callback = function(v) 
-        _25msShared.AutoTrainV4 = v 
-        if not v and StopTween then StopTween(v) end
-    end})
+-- [[ TAB STATS ]] --
+Tabs.Stats:AddButton({Title = "Teleport Ancient Clock", Callback = function() if AncientClock then AncientClock() end end})
+Tabs.Stats:AddButton({Title = "Pull Lever", Callback = function() if PullLever then PullLever() end end})
+Tabs.Stats:AddToggle("AutoTrainV4", {Title = "Auto Train V4", Default = false, Callback = function(v)
+    _25msShared.AutoTrainV4 = v
+    if not v and StopTween then StopTween(v) end
+end})
 
-    Tabs.Stats:AddButton({Title = "Teleport Ancient Clock", Callback = function() if AncientClock then AncientClock() end end})
-    Tabs.Stats:AddButton({Title = "Pull Lever", Callback = function() if PullLever then PullLever() end end})
-end
+-- [[ TAB TELEPORT ]] --
+Tabs.Teleport:AddSection("World")
+Tabs.Teleport:AddButton({Title = "Sea 1", Callback = function() game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("TravelMain") end})
+Tabs.Teleport:AddButton({Title = "Sea 2", Callback = function() game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("TravelDressrosa") end})
+Tabs.Teleport:AddButton({Title = "Sea 3", Callback = function() game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("TravelZou") end})
 
--- [[ 3. TAB COMBAT ]] --
-do
-    Tabs.Combat:AddSection("Settings")
-    Tabs.Combat:AddToggle("KillAura", {Title = "Kill Aura", Default = false, Callback = function(v) _25msShared.Killaura = v end})
-    Tabs.Combat:AddToggle("AimbotCam", {Title = "Aimbot Camera", Default = false, Callback = function(v) _25msShared.AimbotCamera = v end})
-    
-    Tabs.Combat:AddSection("Auto Kill Player")
-    Tabs.Combat:AddToggle("AutoKillTrial", {Title = "Auto Kill Player (Trial)", Default = false, Callback = function(v)
-        _25msShared.AutoKillPlayerInTrial = v
-        if not v and StopTween then StopTween(v) end
-    end})
-end
+-- [[ TAB RAID ]] --
+Tabs.Raid:AddToggle("AutoNextIsland", {Title = "Auto Next Island", Default = false, Callback = function(v) 
+    _25msShared.AutoNextIsland = v
+end})
+Tabs.Raid:AddDropdown("SelectChip", {
+    Title = "Select Chip",
+    Values = {"Flame", "Ice", "Quake", "Light", "Dark", "Spider", "Rumble", "Magma", "Buddha", "Sand", "Phoenix", "Dough"},
+    Default = "Flame",
+    Callback = function(v) _25msShared.SelectChip = v end
+})
+Tabs.Raid:AddButton({Title = "Buy Chip", Callback = function() 
+    game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("RaidsNpc", "Select", _25msShared.SelectChip) 
+end})
+Tabs.Raid:AddButton({Title = "Start Raid", Callback = function()
+    if game.PlaceId == 4442272183 then
+        fireclickdetector(game:GetService("Workspace").Map.CircleIsland.RaidSummon2.Button.Main.ClickDetector)
+    elseif game.PlaceId == 7449423635 then
+        fireclickdetector(game:GetService("Workspace").Map["Boat Castle"].RaidSummon2.Button.Main.ClickDetector)
+    end
+end})
 
--- [[ 4. TAB TELEPORT ]] --
-do
-    Tabs.Teleport:AddSection("World")
-    Tabs.Teleport:AddButton({Title = "Travel Sea 1", Callback = function() game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("TravelMain") end})
-    Tabs.Teleport:AddButton({Title = "Travel Sea 2", Callback = function() game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("TravelDressrosa") end})
-    Tabs.Teleport:AddButton({Title = "Travel Sea 3", Callback = function() game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("TravelZou") end})
-
-    Tabs.Teleport:AddSection("Islands")
-    -- List đảo cơ bản
-    local IslandList = {"Mansion", "Castle On The Sea", "Hydra Island", "Floating Turtle", "Haunted Castle", "The Cafe", "Green Zone", "Jungle", "MarineFord"}
-    
-    Tabs.Teleport:AddDropdown("SelectIsland", {
-        Title = "Select Island",
-        Values = IslandList,
-        Default = "",
-        Callback = function(v) _25msShared.SelectIsland = v end
-    })
-
-    Tabs.Teleport:AddToggle("TeleportIsland", {Title = "Teleport", Default = false, Callback = function(v)
-        _25msShared.TeleportIsland = v
-        if not v and StopTween then StopTween(v) end
-    end})
-end
-
--- [[ 5. TAB RAID ]] --
-do
-    Tabs.Raid:AddSection("Dungeon")
-    Tabs.Raid:AddToggle("AutoNextIsland", {Title = "Auto Next Island", Default = false, Callback = function(v) 
-        _25msShared.AutoNextIsland = v
-        if not v and StopTween then StopTween(v) end
-    end})
-    
-    Tabs.Raid:AddToggle("AutoAwaken", {Title = "Auto Awakener", Default = false, Callback = function(v) _25msShared.Auto_Awakener = v end})
-
-    Tabs.Raid:AddDropdown("SelectChip", {
-        Title = "Select Chip",
-        Values = {"Flame", "Ice", "Quake", "Light", "Dark", "Spider", "Rumble", "Magma", "Buddha", "Sand", "Phoenix", "Dough"},
-        Default = "Flame",
-        Callback = function(v) _25msShared.SelectChip = v end
-    })
-
-    Tabs.Raid:AddButton({Title = "Buy Chip", Callback = function() 
-        game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("RaidsNpc", "Select", _25msShared.SelectChip) 
-    end})
-    
-    Tabs.Raid:AddButton({Title = "Start Raid", Callback = function()
-         if game.PlaceId == 4442272183 then
-            fireclickdetector(game:GetService("Workspace").Map.CircleIsland.RaidSummon2.Button.Main.ClickDetector)
-        elseif game.PlaceId == 7449423635 then
-            fireclickdetector(game:GetService("Workspace").Map["Boat Castle"].RaidSummon2.Button.Main.ClickDetector)
-        end
-    end})
-end
-
--- [[ 6. TAB MISC ]] --
-do
-    Tabs.Misc:AddSection("Sea Events")
-    Tabs.Misc:AddToggle("AutoSB", {Title = "Auto Sea Beast", Default = false, Callback = function(v) _25msShared.AutoKillSeaBeast = v end})
-    Tabs.Misc:AddToggle("AutoTerror", {Title = "Auto Terror Shark", Default = false, Callback = function(v) _25msShared.AutoTerrorShark = v end})
-    
-    Tabs.Misc:AddSection("Helpers")
-    Tabs.Misc:AddToggle("NoClip", {Title = "NoClip", Default = true, Callback = function(v) _25msShared.NOCLIP = v end})
-    Tabs.Misc:AddToggle("InfEnergy", {Title = "Infinite Energy", Default = false, Callback = function(v) InfiniteEnergy = v end})
-    Tabs.Misc:AddButton({Title = "Rejoin Server", Callback = function() game:GetService("TeleportService"):TeleportToPlaceInstance(game.PlaceId, game.JobId, game.Players.LocalPlayer) end})
-end
-
--- [[ SETUP ]] --
+-- [[ SETTINGS ]] --
 SaveManager:SetLibrary(Fluent)
 InterfaceManager:SetLibrary(Fluent)
 SaveManager:IgnoreThemeSettings()
@@ -5405,5 +5336,6 @@ InterfaceManager:BuildInterfaceSection(Tabs.Settings)
 SaveManager:BuildConfigSection(Tabs.Settings)
 
 Window:SelectTab(1)
-Fluent:Notify({Title = "Cokka Hub", Content = "Fluent UI Loaded Successfully!", Duration = 5})
+Fluent:Notify({Title = "Cokka Hub", Content = "Loaded Success!", Duration = 5})
+print("--> UI DA LEN!")
 SaveManager:LoadAutoloadConfig()
