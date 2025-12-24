@@ -5339,3 +5339,46 @@ Window:SelectTab(1)
 Fluent:Notify({Title = "Cokka Hub", Content = "Loaded Success!", Duration = 5})
 print("--> UI DA LEN!")
 SaveManager:LoadAutoloadConfig()
+-- [[ ĐOẠN CODE TẠO NÚT BẬT/TẮT TRÊN MÀN HÌNH (DÁN CUỐI CÙNG) ]] --
+
+do
+    local ToggleUI = Instance.new("ScreenGui")
+    local ToggleButton = Instance.new("ImageButton")
+    local UICorner = Instance.new("UICorner")
+    local UIStroke = Instance.new("UIStroke")
+
+    -- Cấu hình GUI
+    ToggleUI.Name = "CokkaToggleUI"
+    ToggleUI.Parent = game.CoreGui
+    ToggleUI.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+    -- Cấu hình Nút
+    ToggleButton.Name = "ToggleButton"
+    ToggleButton.Parent = ToggleUI
+    ToggleButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    ToggleButton.Position = UDim2.new(0.1, 0, 0.2, 0) -- Vị trí nút (Góc trái)
+    ToggleButton.Size = UDim2.new(0, 50, 0, 50) -- Kích thước nút
+    ToggleButton.Image = "rbxassetid://16022830349" -- Icon Logo (hoặc thay bằng icon khác)
+    ToggleButton.Active = true
+    ToggleButton.Draggable = true -- Cho phép kéo nút đi chỗ khác
+
+    -- Bo tròn nút
+    UICorner.CornerRadius = UDim.new(1, 0)
+    UICorner.Parent = ToggleButton
+
+    -- Viền nút
+    UIStroke.Parent = ToggleButton
+    UIStroke.Color = Color3.fromRGB(255, 255, 255)
+    UIStroke.Thickness = 2
+    UIStroke.Transparency = 0.5
+
+    -- Chức năng: Giả lập bấm phím LeftControl để bật/tắt Fluent UI
+    ToggleButton.MouseButton1Click:Connect(function()
+        local VIM = game:GetService("VirtualInputManager")
+        -- Giả lập bấm phím xuống
+        VIM:SendKeyEvent(true, Enum.KeyCode.LeftControl, false, game)
+        task.wait(0.05)
+        -- Giả lập nhả phím ra
+        VIM:SendKeyEvent(false, Enum.KeyCode.LeftControl, false, game)
+    end)
+end
